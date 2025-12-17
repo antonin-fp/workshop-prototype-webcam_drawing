@@ -7,28 +7,34 @@ body {
     background-color: #222;
     font-family: sans-serif;
     height: 100vh;
-    overflow: hidden; /* Empêche le scroll sur mobile pendant le dessin */
+    /* S'assure que le contenu ne dépasse pas sur mobile */
+    max-height: -webkit-fill-available; 
+    overflow: hidden;
 }
 
-/* Conteneur principal pour superposer vidéo et canvas */
 #camera-container {
     position: relative;
     width: 100%;
     max-width: 800px;
-    margin-top: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    /* Flex pour centrer verticalement si l'écran est grand */
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     background: #000;
+    -webkit-user-select: none; 
+    user-select: none;
+    overflow: hidden; /* Important pour que la vidéo ne déborde pas */
 }
 
-/* La vidéo de la webcam */
 #videoElement {
+    /* La vidéo prend toute la place disponible en gardant le ratio */
     width: 100%;
-    display: block;
-    /* Effet miroir */
-    transform: scaleX(-1); 
+    height: 100%;
+    object-fit: cover; 
+    transform: scaleX(-1); /* Effet miroir CSS */
 }
 
-/* Le canvas de dessin par dessus la vidéo */
 #drawingCanvas {
     position: absolute;
     top: 0;
@@ -36,41 +42,81 @@ body {
     width: 100%;
     height: 100%;
     cursor: crosshair;
+    touch-action: none;
 }
 
-/* Barre d'outils */
 .controls {
-    margin-top: 15px;
+    flex-shrink: 0; /* La barre ne doit pas rétrécir */
+    margin: 10px 0;
     display: flex;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 10px;
-    border-radius: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 10px 15px;
+    border-radius: 30px; /* Style plus moderne */
+    backdrop-filter: blur(5px);
 }
 
 button {
-    padding: 10px 20px;
-    font-size: 16px;
+    padding: 10px;
+    font-size: 18px; /* Plus gros pour les emojis */
     cursor: pointer;
     border: none;
-    border-radius: 4px;
-    background-color: #ff4757;
+    border-radius: 50%; /* Boutons ronds */
+    width: 45px;
+    height: 45px;
+    background-color: #444;
     color: white;
-    font-weight: bold;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-button:hover {
-    background-color: #ff6b81;
+/* Bouton actif (Crayon/Gomme) */
+button.tool-btn.active {
+    background-color: #00cec9;
+    color: #000;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+}
+
+/* Bouton Effacer (Rouge) */
+#clearBtn {
+    background-color: #ff4757;
+}
+#clearBtn:hover { background-color: #ff6b81; }
+
+/* NOUVEAU : Bouton Photo (Bleu) */
+#saveBtn {
+    background-color: #0984e3;
+}
+#saveBtn:hover { background-color: #74b9ff; }
+
+
+.separator {
+    color: #888;
+    font-size: 20px;
+    margin: 0 2px;
+    opacity: 0.5;
 }
 
 input[type="color"] {
     border: none;
-    width: 50px;
+    width: 40px;
     height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    overflow: hidden;
     cursor: pointer;
     background: none;
 }
+/* Hack pour enlever la bordure moche sur Chrome */
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+input[type="color"]::-webkit-color-swatch { border: none; }
 
 input[type="range"] {
     cursor: pointer;
+    width: 80px;
 }

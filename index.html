@@ -9,13 +9,22 @@
 <body>
 
     <div class="controls">
+        <button id="penBtn" class="tool-btn active" title="Outil Crayon">✏️</button>
+        <button id="eraserBtn" class="tool-btn" title="Outil Gomme">🧽</button>
+        
+        <span class="separator">|</span>
+
         <input type="color" id="colorPicker" value="#00FF00" title="Couleur">
-        <input type="range" id="lineWidth" min="1" max="20" value="5" title="Épaisseur">
-        <button id="clearBtn">Effacer</button>
+        <input type="range" id="lineWidth" min="1" max="50" value="5" title="Épaisseur">
+        
+        <span class="separator">|</span>
+        
+        <button id="clearBtn" title="Tout effacer">🗑️</button>
+        <button id="saveBtn" title="Prendre une photo">📷</button>
     </div>
 
     <div id="camera-container">
-        <video id="videoElement" autoplay playsinline></video>
+        <video id="videoElement" autoplay playsinline crossOrigin="anonymous"></video>
         <canvas id="drawingCanvas"></canvas>
     </div>
 
