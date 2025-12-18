@@ -9,6 +9,8 @@
 <body>
 
     <div class="controls">
+        <button id="toggleModeBtn" title="Basculer Direct/Photo">❄️</button>
+        <span class="separator">|</span>
         <button id="switchCamBtn" title="Changer de caméra">🔄</button>
         
         <span class="separator">|</span>
@@ -24,11 +26,12 @@
         <span class="separator">|</span>
         
         <button id="clearBtn" title="Tout effacer">🗑️</button>
-        <button id="saveBtn" title="Photo">📷</button>
+        <button id="saveBtn" title="Sauvegarder">💾</button>
     </div>
 
     <div id="camera-container">
         <video id="videoElement" autoplay playsinline crossOrigin="anonymous"></video>
+        <canvas id="photoCanvas" class="hidden"></canvas>
         <canvas id="drawingCanvas"></canvas>
     </div>
 
