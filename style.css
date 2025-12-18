@@ -4,58 +4,43 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: #000; /* Fond noir pour les bandes */
+    background-color: #000; /* Les bandes noires seront cette couleur de fond */
     font-family: sans-serif;
     height: 100vh;
-    height: 100dvh; /* Pour mobile */
+    height: 100dvh;
     overflow: hidden;
 }
 
 #camera-container {
     position: relative;
     width: 100%;
-    flex-grow: 1; /* Prend tout l'espace disponible */
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    flex-grow: 1; /* Prend toute la place dispo */
     background: #000;
     overflow: hidden;
 }
 
-/* Les couches superposées */
+/* STRATÉGIE CENTRALE :
+   On ne donne pas de width/height 100% ici.
+   On positionne les éléments au centre parfait.
+   Le JS va calculer leur taille exacte (en pixels) pour qu'ils collent au ratio.
+*/
 #videoElement, #photoCanvas, #drawingCanvas {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Centrage parfait */
+    
+    /* Pas de bordure, pas d'object-fit ici, le JS gère la taille */
+    display: block;
 }
 
-/* --- RÈGLE D'OR : CONTAIN --- */
-/* Cela force la vidéo/photo à rentrer EN ENTIER sans être coupée */
-#videoElement {
-    object-fit: contain; 
-    z-index: 1;
-}
-
-#photoCanvas {
-    object-fit: contain;
-    z-index: 2;
-    pointer-events: none;
-}
-
-#drawingCanvas {
-    z-index: 3;
-    cursor: crosshair;
-    touch-action: none;
-    /* Le canvas de dessin couvre tout l'écran pour que tu puisses 
-       aussi annoter dans les bandes noires si tu veux */
-    display: block; 
-}
+#videoElement { z-index: 1; }
+#photoCanvas { z-index: 2; pointer-events: none; }
+#drawingCanvas { z-index: 3; cursor: crosshair; touch-action: none; }
 
 .hidden { display: none !important; }
 
-/* --- Contrôles (Style Overlay en bas) --- */
+/* --- Contrôles (inchangés) --- */
 .controls {
     position: absolute;
     bottom: 20px;
@@ -86,7 +71,6 @@ button.active { background: #00cec9; color: #000; border-color: #00cec9; }
 #clearBtn { background: rgba(255, 71, 87, 0.8); }
 #saveBtn { background: rgba(9, 132, 227, 0.8); }
 #toggleModeBtn { background: rgba(225, 112, 85, 0.8); }
-
 .separator { color: rgba(255,255,255,0.3); font-size: 20px; margin: 0 2px; }
 input[type="range"] { width: 60px; }
 input[type="color"] { width: 35px; height: 35px; border: none; background: none; border-radius: 50%;}

@@ -18,60 +18,69 @@ const toggleModeBtn = document.getElementById('toggleModeBtn');
 let isDrawing = false;
 let lastX = 0; let lastY = 0;
 let currentMode = 'pen';
-let facingMode = 'environment'; // Caméra arrière par défaut
+let facingMode = 'environment';
 let currentStream = null;
 let isLiveMode = true;
 
-// --- 1. FONCTION CLÉ : Simuler object-fit: contain en JS ---
-// Cette fonction sert à dessiner la vidéo centrée avec respect du ratio (bandes noires)
-function drawImageContain(ctx, img, canvasWidth, canvasHeight) {
-    // 1. Calculer le ratio d'échelle pour faire rentrer l'image
-    const hRatio = canvasWidth / img.videoWidth;
-    const vRatio = canvasHeight / img.videoHeight;
-    const ratio = Math.min(hRatio, vRatio); // On prend le plus petit pour que ça rentre
+// --- 1. FONCTION DE DIMENSIONNEMENT STRICT ---
+// Cette fonction calcule la taille exacte que doit prendre la vidéo pour rentrer 
+// dans le conteneur sans déborder (contain), puis applique cette taille
+// aux balises HTML directement.
+function resizeLayout() {
+    const containerW = container.clientWidth;
+    const containerH = container.clientHeight;
+    
+    // Si la vidéo n'est pas chargée, on ne peut pas calculer le ratio
+    if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
-    // 2. Calculer la position pour centrer
-    const centerShift_x = (canvasWidth - img.videoWidth * ratio) / 2;
-    const centerShift_y = (canvasHeight - img.videoHeight * ratio) / 2;
+    // Calcul du ratio pour "Fit" (Contain)
+    const videoRatio = video.videoWidth / video.videoHeight;
+    const containerRatio = containerW / containerH;
 
-    // 3. Dessiner (sans aucun effet miroir)
-    ctx.drawImage(
-        img, 
-        0, 0, img.videoWidth, img.videoHeight, // Source
-        centerShift_x, centerShift_y, img.videoWidth * ratio, img.videoHeight * ratio // Destination
-    );
-}
+    let finalW, finalH;
 
-
-// --- 2. Redimensionnement ---
-function resizeCanvas() {
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-
-    // Si pas de changement, on sort
-    if (canvas.width === width && canvas.height === height) return;
-
-    // Sauvegarde temporaire du dessin
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width; 
-    tempCanvas.height = canvas.height;
-    // On vérifie que le canvas a une taille > 0 avant de dessiner
-    if (canvas.width > 0 && canvas.height > 0) {
-        tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+    if (containerRatio > videoRatio) {
+        // Le conteneur est plus large que la vidéo -> La hauteur est le facteur limitant
+        finalH = containerH;
+        finalW = finalH * videoRatio;
+    } else {
+        // Le conteneur est plus haut que la vidéo -> La largeur est le facteur limitant
+        finalW = containerW;
+        finalH = finalW / videoRatio;
     }
 
-    // Mise à jour de la taille réelle en mémoire
-    canvas.width = width; canvas.height = height;
-    photoCanvas.width = width; photoCanvas.height = height;
+    // On arrondit pour éviter des flous
+    finalW = Math.floor(finalW);
+    finalH = Math.floor(finalH);
 
-    // Restauration du dessin
-    ctx.drawImage(tempCanvas, 0, 0, width, height);
+    // APPLIQUER LA TAILLE AUX ÉLÉMENTS
+    // 1. Vidéo
+    video.style.width = finalW + 'px';
+    video.style.height = finalH + 'px';
+
+    // 2. Canvas Dessin
+    // On doit redimensionner le canvas sans perdre le dessin si possible
+    // (Ici on reset pour simplifier car changer la résolution efface le contenu)
+    if (canvas.width !== finalW || canvas.height !== finalH) {
+        // Si on veut garder le dessin, il faudrait le copier dans un tempCanvas ici
+        canvas.style.width = finalW + 'px';
+        canvas.style.height = finalH + 'px';
+        canvas.width = finalW;  // Résolution interne
+        canvas.height = finalH; // Résolution interne
+    }
+
+    // 3. Canvas Photo
+    photoCanvas.style.width = finalW + 'px';
+    photoCanvas.style.height = finalH + 'px';
+    photoCanvas.width = finalW;
+    photoCanvas.height = finalH;
 }
-// On écoute le redimensionnement (rotation écran)
-window.addEventListener('resize', resizeCanvas);
+
+// On appelle le resize au changement de taille (rotation)
+window.addEventListener('resize', resizeLayout);
 
 
-// --- 3. Caméra ---
+// --- 2. Caméra ---
 async function startCamera() {
     if (currentStream) currentStream.getTracks().forEach(t => t.stop());
     try {
@@ -84,38 +93,37 @@ async function startCamera() {
         currentStream = stream;
         video.srcObject = stream;
         
-        // Note: On a SUPPRIMÉ toute logique de classe .mirrored ici.
-        // La vidéo s'affiche brute, telle quelle.
+        // PAS DE MIROIR demandé
+        video.classList.remove('mirrored'); 
 
         video.onloadedmetadata = () => { 
             video.play(); 
-            resizeCanvas(); 
+            // On attend un tout petit peu que les dimensions soient dispos
+            setTimeout(resizeLayout, 100); 
         };
     } catch (err) { console.error(err); }
 }
 
 switchCamBtn.addEventListener('click', () => {
     facingMode = (facingMode === 'user') ? 'environment' : 'user';
-    if (!isLiveMode) toggleMode(); // Retour au direct si on change de cam
+    if (!isLiveMode) toggleMode();
     startCamera();
 });
 
 
-// --- 4. Mode Direct / Photo ---
+// --- 3. Mode Direct / Photo ---
 function toggleMode() {
     isLiveMode = !isLiveMode;
-    resizeCanvas(); // Sécurité taille
+    resizeLayout(); // Sécurité
 
     if (isLiveMode) {
         video.classList.remove('hidden');
         photoCanvas.classList.add('hidden');
         toggleModeBtn.textContent = '❄️';
     } else {
-        // Mode Figer : On dessine la vidéo sur le canvas photo avec la méthode "Contain"
-        photoCtx.fillStyle = "#000"; // Fond noir
-        photoCtx.fillRect(0, 0, photoCanvas.width, photoCanvas.height);
-        
-        drawImageContain(photoCtx, video, photoCanvas.width, photoCanvas.height);
+        // Comme le photoCanvas a EXACTEMENT la même taille que la vidéo (grâce à resizeLayout),
+        // On dessine simplement l'image complète (0,0 à w,h). Plus de calculs complexes.
+        photoCtx.drawImage(video, 0, 0, photoCanvas.width, photoCanvas.height);
 
         video.classList.add('hidden');
         photoCanvas.classList.remove('hidden');
@@ -125,7 +133,7 @@ function toggleMode() {
 toggleModeBtn.addEventListener('click', toggleMode);
 
 
-// --- 5. Outils & Dessin (Standard) ---
+// --- 4. Outils ---
 function setTool(mode) {
     currentMode = mode;
     if (mode === 'pen') { penBtn.classList.add('active'); eraserBtn.classList.remove('active'); }
@@ -134,10 +142,16 @@ function setTool(mode) {
 penBtn.addEventListener('click', () => setTool('pen'));
 eraserBtn.addEventListener('click', () => setTool('eraser'));
 
+
+// --- 5. Dessin ---
 function getPos(e) {
+    // Le canvas étant centré et dimensionné exactement, 
+    // getBoundingClientRect donne les bonnes coordonnées relatives.
     const rect = canvas.getBoundingClientRect();
     let cx = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
     let cy = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    
+    // Le canvas interne a la même taille que le canvas CSS, donc pas de ratio à calculer
     return { x: cx - rect.left, y: cy - rect.top };
 }
 
@@ -176,36 +190,35 @@ canvas.addEventListener('pointerup', (e) => {
 clearBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
 
 
-// --- 6. Sauvegarde ---
+// --- 6. Sauvegarde Simplifiée ---
 saveBtn.addEventListener('click', () => {
+    // Créer un canvas de la taille EXACTE de la zone vidéo
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     
-    // On sauvegarde EXACTEMENT ce qui est à l'écran
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
 
-    // 1. Fond Noir
-    tempCtx.fillStyle = "#000";
-    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-    // 2. Dessiner la vidéo/photo (méthode Contain)
+    // Pas de fond noir nécessaire ici car on sauvegarde UNIQUEMENT la zone vidéo
+    // (donc pas les bandes noires)
+    
     if (isLiveMode) {
-        drawImageContain(tempCtx, video, tempCanvas.width, tempCanvas.height);
+        // Comme tempCanvas a le même ratio que video, drawImage simple suffit
+        tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
     } else {
-        // En mode photo, c'est déjà dessiné correctement sur photoCanvas
         tempCtx.drawImage(photoCanvas, 0, 0);
     }
 
-    // 3. Dessiner les traits
+    // Dessin
     tempCtx.drawImage(canvas, 0, 0);
 
     const link = document.createElement('a');
-    link.download = `dessin-contain-${Date.now()}.png`;
+    link.download = `dessin-strict-${Date.now()}.png`;
     link.href = tempCanvas.toDataURL('image/png');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 });
 
+// Appel initial
 startCamera();
