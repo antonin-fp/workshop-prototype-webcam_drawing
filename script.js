@@ -1,9 +1,9 @@
 const video = document.getElementById('videoElement');
 const canvas = document.getElementById('drawingCanvas');
 const ctx = canvas.getContext('2d');
-// NOUVEAU : Référence au canvas photo
 const photoCanvas = document.getElementById('photoCanvas');
 const photoCtx = photoCanvas.getContext('2d');
+const cameraContainer = document.getElementById('camera-container');
 
 // Contrôles
 const clearBtn = document.getElementById('clearBtn');
@@ -13,97 +13,137 @@ const colorPicker = document.getElementById('colorPicker');
 const lineWidthRange = document.getElementById('lineWidth');
 const saveBtn = document.getElementById('saveBtn');
 const switchCamBtn = document.getElementById('switchCamBtn');
-const toggleModeBtn = document.getElementById('toggleModeBtn'); // NOUVEAU
+const toggleModeBtn = document.getElementById('toggleModeBtn');
 
 let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
-let currentMode = 'pen';
-let facingMode = 'environment';
+let currentMode = 'pen'; 
+let facingMode = 'environment'; 
 let currentStream = null;
-// NOUVEAU : État pour savoir si on est en direct ou sur photo figée
 let isLiveMode = true;
 
+// --- 1. Utilitaires de Dimensionnement ---
 
-// --- 1. Gestion de la Caméra ---
+// Cette fonction s'assure que la résolution interne du canvas
+// correspond exactement à la taille affichée à l'écran
+function resizeCanvas() {
+    // On donne aux canvas la taille exacte du conteneur affiché
+    const width = cameraContainer.clientWidth;
+    const height = cameraContainer.clientHeight;
+
+    // Mise à jour de la résolution interne (sans effacer si possible)
+    if (canvas.width !== width || canvas.height !== height) {
+        // Sauvegarde du dessin actuel si besoin (optionnel, ici on reset au resize pour simplifier)
+        canvas.width = width;
+        canvas.height = height;
+        photoCanvas.width = width;
+        photoCanvas.height = height;
+    }
+}
+
+// On écoute le redimensionnement de la fenêtre (rotation téléphone)
+window.addEventListener('resize', resizeCanvas);
+
+
+// --- 2. Gestion Caméra ---
 
 async function startCamera() {
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
     }
+
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                facingMode: facingMode, 
+                // On demande une résolution standard, le CSS gérera l'affichage
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            } 
         });
+        
         currentStream = stream;
         video.srcObject = stream;
-
+        
         if (facingMode === 'user') {
             video.classList.add('mirrored');
         } else {
             video.classList.remove('mirrored');
         }
-        video.onloadedmetadata = () => { video.play(); };
+
+        video.onloadedmetadata = () => {
+            video.play();
+            resizeCanvas(); // Ajuste la taille une fois la vidéo prête
+        };
     } catch (err) {
         console.error("Erreur:", err);
-        alert("Impossible d'accéder à la caméra.");
+        alert("Erreur accès caméra.");
     }
 }
 
 switchCamBtn.addEventListener('click', () => {
     facingMode = (facingMode === 'user') ? 'environment' : 'user';
-    // Si on change de caméra, on force le retour au mode direct
     if (!isLiveMode) toggleMode();
     startCamera();
 });
 
-// Redimensionnement des DEUX canvas quand la vidéo change
-video.addEventListener('canplay', () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    // Le canvas photo doit aussi avoir la bonne taille
-    photoCanvas.width = video.videoWidth;
-    photoCanvas.height = video.videoHeight;
-});
-
-
-// --- 2. NOUVEAU : Gestion des Modes (Direct / Photo) ---
+// --- 3. Mode Direct / Photo ---
 
 function toggleMode() {
     isLiveMode = !isLiveMode;
 
     if (isLiveMode) {
-        // Passage en mode DIRECT
         video.classList.remove('hidden');
         photoCanvas.classList.add('hidden');
-        toggleModeBtn.textContent = '❄️'; // Icône pour "Figer"
-        toggleModeBtn.title = "Figer l'image";
+        toggleModeBtn.textContent = '❄️';
     } else {
-        // Passage en mode PHOTO FIGÉE
-        // 1. On copie la frame actuelle de la vidéo sur le photoCanvas
+        // IMPORTANT : Pour dessiner la vidéo sur le canvas en mode "contain",
+        // il faut calculer le ratio pour ne pas déformer l'image (garder aspect ratio)
+        
         photoCtx.clearRect(0, 0, photoCanvas.width, photoCanvas.height);
         
-        // Gestion importante du miroir pour la photo figée
+        // Calcul des dimensions de l'image vidéo pour la centrer (simuler object-fit: contain)
+        const vRatio = video.videoWidth / video.videoHeight;
+        const cRatio = photoCanvas.width / photoCanvas.height;
+        let drawW, drawH, startX, startY;
+
+        if (vRatio > cRatio) {
+            // La vidéo est plus large que le canvas (bandes noires haut/bas)
+            drawW = photoCanvas.width;
+            drawH = drawW / vRatio;
+            startX = 0;
+            startY = (photoCanvas.height - drawH) / 2;
+        } else {
+            // La vidéo est plus haute (bandes noires gauche/droite)
+            drawH = photoCanvas.height;
+            drawW = drawH * vRatio;
+            startY = 0;
+            startX = (photoCanvas.width - drawW) / 2;
+        }
+
         if (facingMode === 'user') {
             photoCtx.translate(photoCanvas.width, 0);
             photoCtx.scale(-1, 1);
+            // Inversion des coordonnées X si miroir
+             startX = (photoCanvas.width - drawW) / 2; // Reste centré
+             // Petit hack car le scale inversé impacte le dessin, on dessine "à l'envers"
+             // mais drawImage gère bien si on a translate avant.
         }
-        photoCtx.drawImage(video, 0, 0, photoCanvas.width, photoCanvas.height);
-        // Reset de la transformation pour ne pas impacter les futurs dessins
+
+        photoCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, startX, startY, drawW, drawH);
+        
         photoCtx.setTransform(1, 0, 0, 1, 0, 0);
 
-        // 2. On cache la vidéo et on montre le canvas photo
         video.classList.add('hidden');
         photoCanvas.classList.remove('hidden');
-        toggleModeBtn.textContent = '🎬'; // Icône pour "Direct"
-        toggleModeBtn.title = "Retour au direct";
+        toggleModeBtn.textContent = '🎬';
     }
 }
-
 toggleModeBtn.addEventListener('click', toggleMode);
 
 
-// --- 3. Gestion des Outils & Dessin (Inchangé) ---
+// --- 4. Outils ---
 function setTool(mode) {
     currentMode = mode;
     if (mode === 'pen') {
@@ -115,17 +155,26 @@ function setTool(mode) {
 penBtn.addEventListener('click', () => setTool('pen'));
 eraserBtn.addEventListener('click', () => setTool('eraser'));
 
+
+// --- 5. Dessin ---
 function getPos(e) {
+    // Comme le canvas fait exactement la taille de l'élément visuel
+    // grâce à resizeCanvas(), le calcul est simplifié :
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    
     let clientX, clientY;
     if (e.changedTouches && e.changedTouches.length > 0) {
-        clientX = e.changedTouches[0].clientX; clientY = e.changedTouches[0].clientY;
+        clientX = e.changedTouches[0].clientX;
+        clientY = e.changedTouches[0].clientY;
     } else {
-        clientX = e.clientX; clientY = e.clientY;
+        clientX = e.clientX;
+        clientY = e.clientY;
     }
-    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+
+    return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+    };
 }
 
 function startDrawing(e) {
@@ -136,15 +185,18 @@ function startDrawing(e) {
 function draw(e) {
     if (!isDrawing) return;
     if (e.cancelable) e.preventDefault();
+    
     const pos = getPos(e);
     ctx.lineWidth = lineWidthRange.value;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
     if (currentMode === 'eraser') {
         ctx.globalCompositeOperation = 'destination-out';
     } else {
         ctx.globalCompositeOperation = 'source-over';
         ctx.strokeStyle = colorPicker.value;
     }
+
     ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
     lastX = pos.x; lastY = pos.y;
 }
@@ -162,56 +214,71 @@ canvas.addEventListener('pointermove', draw);
 canvas.addEventListener('pointerup', (e) => {
      canvas.releasePointerCapture(e.pointerId); stopDrawing();
 });
-
-clearBtn.addEventListener('click', () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-});
+clearBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
 
 
-// --- 4. Sauvegarde Photo (MISE À JOUR) ---
+// --- 6. Sauvegarde ---
 saveBtn.addEventListener('click', () => {
+    // On crée un canvas temporaire de la taille de l'écran (WYSWYG)
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
+    
+    // On utilise la taille actuelle affichée
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
 
-    // DÉTERMINER LA SOURCE DU FOND
-    // Si on est en direct, le fond est la balise <video>
-    // Si on est en photo figée, le fond est le <canvas id="photoCanvas">
-    const backgroundSource = isLiveMode ? video : photoCanvas;
+    // Fond noir (si bandes noires)
+    tempCtx.fillStyle = "#000000";
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-    // GESTION DU MIROIR A LA SAUVEGARDE
-    // On n'applique l'inversion QUE si on est en mode DIRECT ET en caméra SELFIE.
-    // Si on est en mode PHOTO FIGÉE, l'image est déjà inversée sur le photoCanvas.
-    if (isLiveMode && facingMode === 'user') {
-        tempCtx.translate(tempCanvas.width, 0);
-        tempCtx.scale(-1, 1);
+    if (isLiveMode) {
+        // En mode Live, on doit redessiner la vidéo manuellement pour simuler le "contain"
+        // exactement comme on a fait dans toggleMode()
+        const vRatio = video.videoWidth / video.videoHeight;
+        const cRatio = tempCanvas.width / tempCanvas.height;
+        let drawW, drawH, startX, startY;
+
+        if (vRatio > cRatio) {
+            drawW = tempCanvas.width;
+            drawH = drawW / vRatio;
+            startX = 0;
+            startY = (tempCanvas.height - drawH) / 2;
+        } else {
+            drawH = tempCanvas.height;
+            drawW = drawH * vRatio;
+            startY = 0;
+            startX = (tempCanvas.width - drawW) / 2;
+        }
+
+        if (facingMode === 'user') {
+            tempCtx.translate(tempCanvas.width, 0);
+            tempCtx.scale(-1, 1);
+            // Corriger le X si scale inversé
+            // La logique de dessin miroir peut être complexe, 
+            // le plus simple est de garder le drawImage tel quel avec le contexte inversé
+        }
+        
+        tempCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, startX, startY, drawW, drawH);
+        tempCtx.setTransform(1, 0, 0, 1, 0, 0);
+
+    } else {
+        // En mode photo, le photoCanvas a déjà l'image correcte
+        tempCtx.drawImage(photoCanvas, 0, 0);
     }
 
-    // 1. Dessiner le fond (vidéo ou photo figée)
-    tempCtx.drawImage(backgroundSource, 0, 0, tempCanvas.width, tempCanvas.height);
-    
-    // Reset transform
-    tempCtx.setTransform(1, 0, 0, 1, 0, 0);
-    // 2. Dessiner les traits par dessus
+    // Dessin
     tempCtx.drawImage(canvas, 0, 0);
 
     try {
         const date = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
-        // Nom de fichier différent selon le mode
-        const modeSuffix = isLiveMode ? 'live' : 'snapshot';
-        const fileName = `dessin-${modeSuffix}-${date}.png`;
-
+        const fileName = `dessin-${date}.png`;
         const link = document.createElement('a');
         link.download = fileName;
         link.href = tempCanvas.toDataURL('image/png');
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-    } catch (err) {
-        console.error("Erreur sauvegarde:", err);
-    }
+    } catch (err) { console.error(err); }
 });
 
-// Lancement initial
 startCamera();

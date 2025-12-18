@@ -6,26 +6,27 @@ body {
     align-items: center;
     background-color: #222;
     font-family: sans-serif;
+    /* Force le body à prendre exactement la hauteur visible sans scroll */
     height: 100vh;
-    max-height: -webkit-fill-available; 
-    overflow: hidden;
+    height: 100dvh; /* Support amélioré pour mobile (barre d'adresse) */
+    overflow: hidden; 
 }
 
 #camera-container {
     position: relative;
     width: 100%;
-    max-width: 800px;
-    flex-grow: 1;
+    /* Prend toute la hauteur restante moins les contrôles */
+    flex-grow: 1; 
+    /* Max width pour ne pas être ridicule sur PC */
+    max-width: 100%; 
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #000;
-    -webkit-user-select: none; 
-    user-select: none;
+    background: #000; /* Fond noir pour les bandes */
     overflow: hidden;
 }
 
-/* Les 3 couches superposées */
+/* Les 3 couches */
 #videoElement, #photoCanvas, #drawingCanvas {
     position: absolute;
     top: 0;
@@ -34,35 +35,34 @@ body {
     height: 100%;
 }
 
-/* Couche 1 : La vidéo (fond) */
+/* Couche 1 : Vidéo */
 #videoElement {
-    object-fit: cover;
+    /* CORRECTION ICI : 'contain' affiche toute la vidéo sans couper les bords */
+    object-fit: contain; 
     transition: transform 0.5s ease;
     z-index: 1;
 }
 #videoElement.mirrored { transform: scaleX(-1); }
 
-/* Couche 2 : La photo figée (milieu) */
+/* Couche 2 : Photo */
 #photoCanvas {
     object-fit: contain;
     z-index: 2;
-    pointer-events: none; /* Laisse passer les clics vers le dessin */
+    pointer-events: none;
 }
 
-/* Couche 3 : Le dessin (devant) */
+/* Couche 3 : Dessin */
 #drawingCanvas {
+    /* Le canvas doit aussi se comporter comme s'il était contenu */
+    object-fit: contain; 
     cursor: crosshair;
     touch-action: none;
     z-index: 3;
 }
 
-/* Classe utilitaire pour cacher des éléments */
-.hidden {
-    display: none !important;
-}
+.hidden { display: none !important; }
 
-
-/* --- Styles des contrôles (inchangés ou presque) --- */
+/* --- Contrôles (Style compacté pour petit écran) --- */
 .controls {
     flex-shrink: 0;
     margin: 10px 0;
@@ -70,42 +70,44 @@ body {
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     background: rgba(255, 255, 255, 0.15);
-    padding: 10px 15px;
+    padding: 8px 15px;
     border-radius: 30px;
     backdrop-filter: blur(5px);
     z-index: 10;
+    max-width: 95%; /* Évite que la barre touche les bords */
 }
 
 button {
-    padding: 10px;
-    font-size: 18px;
+    padding: 0;
+    font-size: 20px;
     cursor: pointer;
     border: none;
     border-radius: 50%;
-    width: 45px;
-    height: 45px;
+    width: 42px;
+    height: 42px;
     background-color: #444;
     color: white;
     display: flex;
     justify-content: center;
     align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
-button.tool-btn.active { background-color: #00cec9; color: #000; }
+button.tool-btn.active { background-color: #00cec9; color: #000; transform: scale(1.1); }
 #clearBtn { background-color: #ff4757; }
 #saveBtn { background-color: #0984e3; }
 #switchCamBtn { background-color: #6c5ce7; }
-/* Couleur spéciale pour le bouton mode */
 #toggleModeBtn { background-color: #e17055; }
 
-.separator { color: #888; margin: 0 2px; opacity: 0.5; }
+.separator { color: #aaa; margin: 0 2px; opacity: 0.5; font-size: 14px;}
 
 input[type="color"] {
-    border: none; width: 40px; height: 40px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    width: 38px; height: 38px; border-radius: 50%;
     overflow: hidden; cursor: pointer; background: none;
 }
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 input[type="color"]::-webkit-color-swatch { border: none; }
-input[type="range"] { width: 80px; cursor: pointer; }
+input[type="range"] { width: 70px; cursor: pointer; }
