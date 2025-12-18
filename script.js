@@ -1,106 +1,165 @@
+// --- ÉLÉMENTS DOM ---
 const video = document.getElementById('videoElement');
 const canvas = document.getElementById('drawingCanvas');
 const ctx = canvas.getContext('2d');
 const photoCanvas = document.getElementById('photoCanvas');
 const photoCtx = photoCanvas.getContext('2d');
-const container = document.getElementById('camera-container');
+const mainContainer = document.getElementById('main-container');
+const cameraWrapper = document.getElementById('camera-wrapper');
 
-// Contrôles
-const clearBtn = document.getElementById('clearBtn');
+// Containers UI
+const uiWrapper = document.getElementById('ui-wrapper');
+const toolbar = document.getElementById('toolbar');
+const toggleIcon = document.getElementById('toggleIcon');
+
+// Panels
+const settingsPanel = document.getElementById('settingsPanel'); // Crayon
+const eraserPanel = document.getElementById('eraserPanel');   // Gomme
+
+// Boutons
+const sideSwitchBtn = document.getElementById('sideSwitchBtn');
+const toggleModeBtn = document.getElementById('toggleModeBtn');
+const switchCamBtn = document.getElementById('switchCamBtn');
 const penBtn = document.getElementById('penBtn');
 const eraserBtn = document.getElementById('eraserBtn');
+const saveBtn = document.getElementById('saveBtn');
+const trashBtn = document.getElementById('trashBtn');
+const toggleMenuBtn = document.getElementById('toggleMenuBtn');
+
+// Inputs Crayon
+const colorBtn = document.getElementById('colorBtn');
+const colorIcon = document.getElementById('colorIcon');
 const colorPicker = document.getElementById('colorPicker');
 const lineWidthRange = document.getElementById('lineWidth');
-const saveBtn = document.getElementById('saveBtn');
-const switchCamBtn = document.getElementById('switchCamBtn');
-const toggleModeBtn = document.getElementById('toggleModeBtn');
+const widthValue = document.getElementById('widthValue');
 
+// Inputs Gomme
+const eraserWidthRange = document.getElementById('eraserWidth');
+const eraserWidthValue = document.getElementById('eraserWidthValue');
+
+// Variables
 let isDrawing = false;
 let lastX = 0; let lastY = 0;
 let currentMode = 'pen';
 let facingMode = 'environment';
 let currentStream = null;
 let isLiveMode = true;
+let isToolbarCollapsed = false;
 
-// --- 1. FONCTION DE DIMENSIONNEMENT STRICT ---
-// Cette fonction calcule la taille exacte que doit prendre la vidéo pour rentrer 
-// dans le conteneur sans déborder (contain), puis applique cette taille
-// aux balises HTML directement.
-function resizeLayout() {
-    const containerW = container.clientWidth;
-    const containerH = container.clientHeight;
+// --- INITIALISATION ---
+ctx.strokeStyle = colorPicker.value;
+colorIcon.style.color = colorPicker.value;
+
+// Affichage initial
+settingsPanel.classList.remove('hidden-panel');
+
+
+// --- 1. LOGIQUE UI ---
+
+// Changer Côté (Cible le wrapper complet)
+sideSwitchBtn.addEventListener('click', () => {
+    uiWrapper.classList.toggle('right');
+    uiWrapper.classList.toggle('left');
+});
+
+// Réduire / Développer
+toggleMenuBtn.addEventListener('click', () => {
+    isToolbarCollapsed = !isToolbarCollapsed;
+    toolbar.classList.toggle('collapsed');
     
-    // Si la vidéo n'est pas chargée, on ne peut pas calculer le ratio
-    if (video.videoWidth === 0 || video.videoHeight === 0) return;
+    if (isToolbarCollapsed) {
+        toggleIcon.className = "fa-solid fa-chevron-up";
+    } else {
+        toggleIcon.className = "fa-solid fa-chevron-down";
+    }
+});
 
-    // Calcul du ratio pour "Fit" (Contain)
+// CRAYON
+penBtn.addEventListener('click', () => {
+    currentMode = 'pen';
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = colorPicker.value;
+    
+    penBtn.classList.add('active');
+    eraserBtn.classList.remove('active');
+    
+    // UI Panel
+    settingsPanel.classList.remove('hidden-panel');
+    eraserPanel.classList.add('hidden-panel');
+});
+
+// GOMME
+eraserBtn.addEventListener('click', () => {
+    currentMode = 'eraser';
+    ctx.globalCompositeOperation = 'destination-out';
+    
+    eraserBtn.classList.add('active');
+    penBtn.classList.remove('active');
+    
+    // UI Panel
+    eraserPanel.classList.remove('hidden-panel');
+    settingsPanel.classList.add('hidden-panel');
+});
+
+
+// COULEUR
+colorBtn.addEventListener('click', () => colorPicker.click());
+colorPicker.addEventListener('input', (e) => {
+    const col = e.target.value;
+    colorIcon.style.color = col;
+    if (currentMode === 'pen') ctx.strokeStyle = col;
+});
+
+// TAILLE CRAYON
+lineWidthRange.addEventListener('input', (e) => {
+    const size = e.target.value;
+    widthValue.textContent = size + 'px';
+});
+
+// TAILLE GOMME
+eraserWidthRange.addEventListener('input', (e) => {
+    const size = e.target.value;
+    eraserWidthValue.textContent = size + 'px';
+});
+
+
+// --- 2. LAYOUT & CAMERA ---
+
+function resizeLayout() {
+    const availableW = mainContainer.clientWidth;
+    const availableH = mainContainer.clientHeight;
+    if (video.videoWidth === 0) return;
+
     const videoRatio = video.videoWidth / video.videoHeight;
-    const containerRatio = containerW / containerH;
-
+    const containerRatio = availableW / availableH;
     let finalW, finalH;
 
     if (containerRatio > videoRatio) {
-        // Le conteneur est plus large que la vidéo -> La hauteur est le facteur limitant
-        finalH = containerH;
-        finalW = finalH * videoRatio;
+        finalH = availableH; finalW = finalH * videoRatio;
     } else {
-        // Le conteneur est plus haut que la vidéo -> La largeur est le facteur limitant
-        finalW = containerW;
-        finalH = finalW / videoRatio;
+        finalW = availableW; finalH = finalW / videoRatio;
     }
+    finalW = Math.floor(finalW); finalH = Math.floor(finalH);
 
-    // On arrondit pour éviter des flous
-    finalW = Math.floor(finalW);
-    finalH = Math.floor(finalH);
-
-    // APPLIQUER LA TAILLE AUX ÉLÉMENTS
-    // 1. Vidéo
-    video.style.width = finalW + 'px';
-    video.style.height = finalH + 'px';
-
-    // 2. Canvas Dessin
-    // On doit redimensionner le canvas sans perdre le dessin si possible
-    // (Ici on reset pour simplifier car changer la résolution efface le contenu)
+    cameraWrapper.style.width = finalW + 'px';
+    cameraWrapper.style.height = finalH + 'px';
     if (canvas.width !== finalW || canvas.height !== finalH) {
-        // Si on veut garder le dessin, il faudrait le copier dans un tempCanvas ici
-        canvas.style.width = finalW + 'px';
-        canvas.style.height = finalH + 'px';
-        canvas.width = finalW;  // Résolution interne
-        canvas.height = finalH; // Résolution interne
+        canvas.width = finalW; canvas.height = finalH;
     }
-
-    // 3. Canvas Photo
-    photoCanvas.style.width = finalW + 'px';
-    photoCanvas.style.height = finalH + 'px';
-    photoCanvas.width = finalW;
-    photoCanvas.height = finalH;
+    photoCanvas.width = finalW; photoCanvas.height = finalH;
 }
-
-// On appelle le resize au changement de taille (rotation)
 window.addEventListener('resize', resizeLayout);
 
-
-// --- 2. Caméra ---
 async function startCamera() {
     if (currentStream) currentStream.getTracks().forEach(t => t.stop());
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-                facingMode: facingMode, 
-                width: { ideal: 1920 }, height: { ideal: 1080 } 
-            } 
+            video: { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } } 
         });
         currentStream = stream;
         video.srcObject = stream;
-        
-        // PAS DE MIROIR demandé
         video.classList.remove('mirrored'); 
-
-        video.onloadedmetadata = () => { 
-            video.play(); 
-            // On attend un tout petit peu que les dimensions soient dispos
-            setTimeout(resizeLayout, 100); 
-        };
+        video.onloadedmetadata = () => { video.play(); setTimeout(resizeLayout, 100); };
     } catch (err) { console.error(err); }
 }
 
@@ -110,73 +169,52 @@ switchCamBtn.addEventListener('click', () => {
     startCamera();
 });
 
-
-// --- 3. Mode Direct / Photo ---
 function toggleMode() {
     isLiveMode = !isLiveMode;
-    resizeLayout(); // Sécurité
-
+    resizeLayout();
     if (isLiveMode) {
-        video.classList.remove('hidden');
-        photoCanvas.classList.add('hidden');
-        toggleModeBtn.textContent = '❄️';
+        video.classList.remove('hidden'); photoCanvas.classList.add('hidden');
+        toggleModeBtn.innerHTML = '<i class="fa-solid fa-snowflake"></i>';
     } else {
-        // Comme le photoCanvas a EXACTEMENT la même taille que la vidéo (grâce à resizeLayout),
-        // On dessine simplement l'image complète (0,0 à w,h). Plus de calculs complexes.
         photoCtx.drawImage(video, 0, 0, photoCanvas.width, photoCanvas.height);
-
-        video.classList.add('hidden');
-        photoCanvas.classList.remove('hidden');
-        toggleModeBtn.textContent = '🎬';
+        video.classList.add('hidden'); photoCanvas.classList.remove('hidden');
+        toggleModeBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
     }
 }
 toggleModeBtn.addEventListener('click', toggleMode);
 
 
-// --- 4. Outils ---
-function setTool(mode) {
-    currentMode = mode;
-    if (mode === 'pen') { penBtn.classList.add('active'); eraserBtn.classList.remove('active'); }
-    else { eraserBtn.classList.add('active'); penBtn.classList.remove('active'); }
-}
-penBtn.addEventListener('click', () => setTool('pen'));
-eraserBtn.addEventListener('click', () => setTool('eraser'));
+// --- 3. DESSIN ---
 
-
-// --- 5. Dessin ---
-function getPos(e) {
-    // Le canvas étant centré et dimensionné exactement, 
-    // getBoundingClientRect donne les bonnes coordonnées relatives.
-    const rect = canvas.getBoundingClientRect();
-    let cx = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-    let cy = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-    
-    // Le canvas interne a la même taille que le canvas CSS, donc pas de ratio à calculer
-    return { x: cx - rect.left, y: cy - rect.top };
-}
+trashBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
 
 function startDrawing(e) {
     isDrawing = true;
-    const pos = getPos(e); lastX = pos.x; lastY = pos.y;
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    const cy = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    lastX = cx - rect.left; lastY = cy - rect.top;
 }
 
 function draw(e) {
     if (!isDrawing) return;
-    if (e.cancelable) e.preventDefault();
-    const pos = getPos(e);
-    
-    ctx.lineWidth = lineWidthRange.value;
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    const cy = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    const x = cx - rect.left; const y = cy - rect.top;
 
-    if (currentMode === 'eraser') ctx.globalCompositeOperation = 'destination-out';
-    else {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.strokeStyle = colorPicker.value;
+    // Utilisation de la bonne taille selon le mode
+    if (currentMode === 'pen') {
+        ctx.lineWidth = lineWidthRange.value;
+    } else {
+        ctx.lineWidth = eraserWidthRange.value;
     }
-    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
-    lastX = pos.x; lastY = pos.y;
+    
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
+    lastX = x; lastY = y;
 }
-function stopDrawing() { isDrawing = false; ctx.globalCompositeOperation = 'source-over'; }
 
 canvas.addEventListener('pointerdown', (e) => {
     if (e.button === 0 || e.pointerType === 'touch') {
@@ -185,40 +223,20 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 canvas.addEventListener('pointermove', draw);
 canvas.addEventListener('pointerup', (e) => {
-     canvas.releasePointerCapture(e.pointerId); stopDrawing();
+     canvas.releasePointerCapture(e.pointerId); isDrawing = false;
 });
-clearBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
 
-
-// --- 6. Sauvegarde Simplifiée ---
 saveBtn.addEventListener('click', () => {
-    // Créer un canvas de la taille EXACTE de la zone vidéo
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
-    
-    tempCanvas.width = canvas.width;
-    tempCanvas.height = canvas.height;
-
-    // Pas de fond noir nécessaire ici car on sauvegarde UNIQUEMENT la zone vidéo
-    // (donc pas les bandes noires)
-    
-    if (isLiveMode) {
-        // Comme tempCanvas a le même ratio que video, drawImage simple suffit
-        tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-    } else {
-        tempCtx.drawImage(photoCanvas, 0, 0);
-    }
-
-    // Dessin
+    tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
+    if (isLiveMode) tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+    else tempCtx.drawImage(photoCanvas, 0, 0);
     tempCtx.drawImage(canvas, 0, 0);
-
     const link = document.createElement('a');
-    link.download = `dessin-strict-${Date.now()}.png`;
+    link.download = `dessin-${Date.now()}.png`;
     link.href = tempCanvas.toDataURL('image/png');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
 });
 
-// Appel initial
 startCamera();

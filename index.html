@@ -3,28 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dessin Strict</title>
+    <title>Dessin App Final</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="camera-container">
-        <video id="videoElement" autoplay playsinline crossOrigin="anonymous"></video>
-        <canvas id="photoCanvas" class="hidden"></canvas>
-        <canvas id="drawingCanvas"></canvas>
+
+    <header>
+        <a href="#" class="no-action-link">
+            <img src="media/logo.png" alt="Logo" id="app-logo">
+        </a>
+    </header>
+
+    <main id="main-container">
         
-        <div class="controls">
-            <button id="toggleModeBtn" title="Figer/Direct">❄️</button>
-            <button id="switchCamBtn" title="Changer Caméra">🔄</button>
-            <span class="separator">|</span>
-            <button id="penBtn" class="active">✏️</button>
-            <button id="eraserBtn">🧽</button>
-            <input type="color" id="colorPicker" value="#00FF00">
-            <input type="range" id="lineWidth" min="1" max="50" value="5">
-            <span class="separator">|</span>
-            <button id="clearBtn">🗑️</button>
-            <button id="saveBtn">💾</button>
+        <div id="camera-wrapper">
+            <video id="videoElement" autoplay playsinline crossOrigin="anonymous"></video>
+            <canvas id="photoCanvas" class="hidden"></canvas>
+            <canvas id="drawingCanvas"></canvas>
         </div>
-    </div>
+
+        <div id="ui-wrapper" class="ui-group right">
+            
+            <button id="sideSwitchBtn" class="floating-btn" title="Changer de côté">
+                <i class="fa-solid fa-right-left"></i>
+            </button>
+
+            <div class="toolbar" id="toolbar">
+                <div class="toolbar-content">
+                    
+                    <button id="toggleModeBtn" title="Figer/Direct">
+                        <i class="fa-solid fa-snowflake"></i>
+                    </button>
+
+                    <button id="switchCamBtn" title="Changer Caméra">
+                        <i class="fa-solid fa-repeat"></i>
+                    </button>
+
+                    <button id="penBtn" class="active" title="Crayon">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+
+                    <button id="eraserBtn" title="Gomme">
+                        <i class="fa-solid fa-eraser"></i>
+                    </button>
+
+                    <button id="saveBtn" title="Sauvegarder">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                    </button>
+
+                    <button id="trashBtn" title="Tout effacer">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+
+                    <div class="separator"></div>
+                </div>
+
+                <button id="toggleMenuBtn" title="Réduire">
+                    <i id="toggleIcon" class="fa-solid fa-chevron-down"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="settingsPanel" class="settings-panel hidden-panel">
+            <div class="color-wrapper">
+                <button id="colorBtn" title="Couleur">
+                    <i id="colorIcon" class="fa-solid fa-circle"></i>
+                </button>
+                <input type="color" id="colorPicker" value="#EBC982">
+            </div>
+            <input type="range" id="lineWidth" min="1" max="50" value="5">
+            <span id="widthValue" class="pixel-value">5px</span>
+        </div>
+
+        <div id="eraserPanel" class="settings-panel hidden-panel">
+            <i class="fa-solid fa-eraser" style="font-size: 20px;"></i>
+            
+            <input type="range" id="eraserWidth" min="1" max="50" value="20">
+            <span id="eraserWidthValue" class="pixel-value">20px</span>
+        </div>
+
+    </main>
+
+    <footer>
+        <a href="#" class="footer-link">
+            <i class="fa-solid fa-camera"></i>
+        </a>
+        <a href="#" class="footer-link">
+            <i class="fa-solid fa-calendar"></i>
+        </a>
+        <a href="#" class="footer-link">
+            <i class="fa-solid fa-user"></i>
+        </a>
+    </footer>
+
     <script src="script.js"></script>
 </body>
 </html>
