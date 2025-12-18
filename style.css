@@ -2,7 +2,6 @@
     --header-footer-bg: #2C3673;
     --main-bg: #44475D;
     --content-color: #EBC982;
-    /* Correction couleur fond demandée */
     --toolbar-bg: #44475D; 
     --hover-bg: #EBC982;
     --hover-text: #44475D;
@@ -48,45 +47,47 @@ main {
 .hidden { display: none !important; }
 
 
-/* --- WRAPPER UI (Bouton switch + Toolbar) --- */
+/* --- WRAPPER UI (Modifié) --- */
 .ui-group {
     position: absolute;
-    bottom: 20px;
+    
+    /* ALIGNEMENT EN HAUT */
+    top: 20px; 
+    /* On supprime le centrage vertical */
+    /* transform: translateY(-50%); */
+    
     display: flex;
-    flex-direction: column; /* Empile le bouton switch et la toolbar */
-    align-items: center; /* Aligne les centres */
-    gap: 10px; /* Espace entre le bouton externe et la toolbar */
+    flex-direction: column; 
+    align-items: center; 
+    gap: 10px; 
     z-index: 150;
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    max-height: calc(100% - 40px);
+    
+    /* SUPPRESSION DE L'ANTI-CHEVAUCHEMENT */
+    /* On laisse la barre prendre sa taille naturelle */
+    max-height: none; 
 }
 
 .ui-group.right { right: 15px; }
 .ui-group.left { left: 15px; }
 
 
-/* --- BOUTON FLOTTANT (Switch Side) --- */
+/* --- BOUTON FLOTTANT --- */
 .floating-btn {
     width: 42px; height: 42px;
     border-radius: 8px;
     background-color: transparent;
-    border: 1px solid transparent; /* Invisible par défaut */
+    border: 1px solid transparent; 
     color: var(--content-color);
     font-size: 18px; cursor: pointer;
     display: flex; justify-content: center; align-items: center;
     transition: all 0.2s;
     flex-shrink: 0;
 }
-.floating-btn:hover {
-    background-color: var(--hover-bg);
-    border-color: var(--hover-bg);
-    color: var(--hover-text);
-}
 
 
 /* --- BARRE D'OUTILS --- */
 .toolbar {
-    /* Plus de positionnement absolu ici, c'est géré par le .ui-group parent */
     display: flex; flex-direction: column; 
     gap: 6px;
     background: var(--toolbar-bg);
@@ -94,16 +95,20 @@ main {
     border-radius: 8px;
     border: none;
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    
+    /* On laisse la barre s'étendre, scroll si vraiment elle dépasse l'écran */
+    max-height: calc(100vh - 150px); 
     overflow-y: auto; scrollbar-width: none;
 }
 .toolbar::-webkit-scrollbar { display: none; }
 
-/* --- BOUTONS D'ACTION (Interne Toolbar) --- */
+
+/* --- BOUTONS D'ACTION --- */
 .toolbar button {
     width: 42px; height: 42px;
     border-radius: 8px;
     
-    /* NORMAL : Icône jaune, pas de fond, pas de contour (border transparent) */
+    /* NORMAL */
     background-color: transparent;
     border: 1.5px solid transparent; 
     color: var(--content-color);
@@ -113,22 +118,10 @@ main {
     transition: all 0.2s; flex-shrink: 0;
 }
 
-/* SURVOL : Fond jaune, Contour jaune, Icône foncée */
-.toolbar button:hover {
-    background-color: var(--hover-bg);
-    border-color: var(--hover-bg);
-    color: var(--hover-text);
-}
+/* PAS DE HOVER */
 
-/* SÉLECTIONNÉ : Fond transparent, Contour jaune, Icône jaune */
+/* SÉLECTIONNÉ */
 .toolbar button.active {
-    background-color: transparent;
-    border-color: var(--content-color);
-    color: var(--content-color);
-}
-
-/* Pas de changement de couleur au survol si déjà actif, on garde l'état "active" */
-.toolbar button.active:hover {
     background-color: transparent;
     border-color: var(--content-color);
     color: var(--content-color);
@@ -144,7 +137,7 @@ main {
 .toolbar.collapsed .toolbar-content { display: none; }
 
 
-/* --- BARRES DE RÉGLAGES (Settings Panel & Eraser Panel) --- */
+/* --- BARRES DE RÉGLAGES --- */
 .settings-panel {
     position: absolute;
     bottom: 20px;
@@ -173,14 +166,12 @@ main {
     transform: translate(-50%, 60px);
 }
 
-/* Wrapper couleur */
 .color-wrapper { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
 .color-wrapper button {
     width: 100%; height: 100%; border: none; background: none; padding: 0;
     color: var(--content-color); font-size: 32px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
 }
-.color-wrapper button:hover { opacity: 0.8; }
 #colorPicker {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     opacity: 0; cursor: pointer;
@@ -190,12 +181,10 @@ input[type="range"] {
     flex-grow: 1; accent-color: var(--content-color); cursor: pointer; height: 4px;
 }
 
-/* Affichage Pixel Value */
 .pixel-value {
     color: var(--content-color);
     font-weight: bold;
     font-size: 14px;
-    min-width: 40px;
     text-align: right;
     white-space: nowrap;
 }
@@ -213,7 +202,5 @@ footer {
     text-decoration: none; color: var(--content-color); font-size: 24px;
     width: 40px; height: 40px;
     display: flex; justify-content: center; align-items: center; outline: none;
-}
-.footer-link:hover, .footer-link:active, .footer-link:focus {
-    color: var(--content-color); background: transparent; border: none;
+    cursor: default;
 }

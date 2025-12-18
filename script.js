@@ -13,8 +13,8 @@ const toolbar = document.getElementById('toolbar');
 const toggleIcon = document.getElementById('toggleIcon');
 
 // Panels
-const settingsPanel = document.getElementById('settingsPanel'); // Crayon
-const eraserPanel = document.getElementById('eraserPanel');   // Gomme
+const settingsPanel = document.getElementById('settingsPanel');
+const eraserPanel = document.getElementById('eraserPanel');
 
 // Boutons
 const sideSwitchBtn = document.getElementById('sideSwitchBtn');
@@ -26,18 +26,15 @@ const saveBtn = document.getElementById('saveBtn');
 const trashBtn = document.getElementById('trashBtn');
 const toggleMenuBtn = document.getElementById('toggleMenuBtn');
 
-// Inputs Crayon
+// Inputs
 const colorBtn = document.getElementById('colorBtn');
 const colorIcon = document.getElementById('colorIcon');
 const colorPicker = document.getElementById('colorPicker');
 const lineWidthRange = document.getElementById('lineWidth');
 const widthValue = document.getElementById('widthValue');
-
-// Inputs Gomme
 const eraserWidthRange = document.getElementById('eraserWidth');
 const eraserWidthValue = document.getElementById('eraserWidthValue');
 
-// Variables
 let isDrawing = false;
 let lastX = 0; let lastY = 0;
 let currentMode = 'pen';
@@ -46,35 +43,27 @@ let currentStream = null;
 let isLiveMode = true;
 let isToolbarCollapsed = false;
 
-// --- INITIALISATION ---
+// Init
 ctx.strokeStyle = colorPicker.value;
 colorIcon.style.color = colorPicker.value;
-
-// Affichage initial
 settingsPanel.classList.remove('hidden-panel');
 
+// --- UI ---
 
-// --- 1. LOGIQUE UI ---
-
-// Changer Côté (Cible le wrapper complet)
+// Switch Side
 sideSwitchBtn.addEventListener('click', () => {
     uiWrapper.classList.toggle('right');
     uiWrapper.classList.toggle('left');
 });
 
-// Réduire / Développer
+// Réduire
 toggleMenuBtn.addEventListener('click', () => {
     isToolbarCollapsed = !isToolbarCollapsed;
     toolbar.classList.toggle('collapsed');
-    
-    if (isToolbarCollapsed) {
-        toggleIcon.className = "fa-solid fa-chevron-up";
-    } else {
-        toggleIcon.className = "fa-solid fa-chevron-down";
-    }
+    toggleIcon.className = isToolbarCollapsed ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down";
 });
 
-// CRAYON
+// Pen
 penBtn.addEventListener('click', () => {
     currentMode = 'pen';
     ctx.globalCompositeOperation = 'source-over';
@@ -83,12 +72,11 @@ penBtn.addEventListener('click', () => {
     penBtn.classList.add('active');
     eraserBtn.classList.remove('active');
     
-    // UI Panel
     settingsPanel.classList.remove('hidden-panel');
     eraserPanel.classList.add('hidden-panel');
 });
 
-// GOMME
+// Eraser
 eraserBtn.addEventListener('click', () => {
     currentMode = 'eraser';
     ctx.globalCompositeOperation = 'destination-out';
@@ -96,13 +84,11 @@ eraserBtn.addEventListener('click', () => {
     eraserBtn.classList.add('active');
     penBtn.classList.remove('active');
     
-    // UI Panel
     eraserPanel.classList.remove('hidden-panel');
     settingsPanel.classList.add('hidden-panel');
 });
 
-
-// COULEUR
+// Color
 colorBtn.addEventListener('click', () => colorPicker.click());
 colorPicker.addEventListener('input', (e) => {
     const col = e.target.value;
@@ -110,20 +96,12 @@ colorPicker.addEventListener('input', (e) => {
     if (currentMode === 'pen') ctx.strokeStyle = col;
 });
 
-// TAILLE CRAYON
-lineWidthRange.addEventListener('input', (e) => {
-    const size = e.target.value;
-    widthValue.textContent = size + 'px';
-});
-
-// TAILLE GOMME
-eraserWidthRange.addEventListener('input', (e) => {
-    const size = e.target.value;
-    eraserWidthValue.textContent = size + 'px';
-});
+// Sizes
+lineWidthRange.addEventListener('input', (e) => widthValue.textContent = e.target.value + 'px');
+eraserWidthRange.addEventListener('input', (e) => eraserWidthValue.textContent = e.target.value + 'px');
 
 
-// --- 2. LAYOUT & CAMERA ---
+// --- LAYOUT & CAM ---
 
 function resizeLayout() {
     const availableW = mainContainer.clientWidth;
@@ -184,7 +162,7 @@ function toggleMode() {
 toggleModeBtn.addEventListener('click', toggleMode);
 
 
-// --- 3. DESSIN ---
+// --- DESSIN ---
 
 trashBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
 
@@ -204,14 +182,9 @@ function draw(e) {
     const cy = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
     const x = cx - rect.left; const y = cy - rect.top;
 
-    // Utilisation de la bonne taille selon le mode
-    if (currentMode === 'pen') {
-        ctx.lineWidth = lineWidthRange.value;
-    } else {
-        ctx.lineWidth = eraserWidthRange.value;
-    }
-    
+    ctx.lineWidth = (currentMode === 'pen') ? lineWidthRange.value : eraserWidthRange.value;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    
     ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
     lastX = x; lastY = y;
 }
