@@ -25,29 +25,44 @@ body {
     overflow: hidden;
 }
 
-#videoElement {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    /* Plus de transform ici par défaut */
-    transition: transform 0.5s ease; /* Petit effet sympa lors du switch */
-}
-
-/* NOUVEAU : Classe pour l'effet miroir (Selfie uniquement) */
-#videoElement.mirrored {
-    transform: scaleX(-1);
-}
-
-#drawingCanvas {
+/* Les 3 couches superposées */
+#videoElement, #photoCanvas, #drawingCanvas {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    cursor: crosshair;
-    touch-action: none;
 }
 
+/* Couche 1 : La vidéo (fond) */
+#videoElement {
+    object-fit: cover;
+    transition: transform 0.5s ease;
+    z-index: 1;
+}
+#videoElement.mirrored { transform: scaleX(-1); }
+
+/* Couche 2 : La photo figée (milieu) */
+#photoCanvas {
+    object-fit: contain;
+    z-index: 2;
+    pointer-events: none; /* Laisse passer les clics vers le dessin */
+}
+
+/* Couche 3 : Le dessin (devant) */
+#drawingCanvas {
+    cursor: crosshair;
+    touch-action: none;
+    z-index: 3;
+}
+
+/* Classe utilitaire pour cacher des éléments */
+.hidden {
+    display: none !important;
+}
+
+
+/* --- Styles des contrôles (inchangés ou presque) --- */
 .controls {
     flex-shrink: 0;
     margin: 10px 0;
@@ -60,7 +75,7 @@ body {
     padding: 10px 15px;
     border-radius: 30px;
     backdrop-filter: blur(5px);
-    z-index: 10; /* S'assure que les contrôles sont au-dessus */
+    z-index: 10;
 }
 
 button {
@@ -78,26 +93,18 @@ button {
     align-items: center;
 }
 
-button.tool-btn.active {
-    background-color: #00cec9;
-    color: #000;
-}
-
+button.tool-btn.active { background-color: #00cec9; color: #000; }
 #clearBtn { background-color: #ff4757; }
 #saveBtn { background-color: #0984e3; }
-/* Couleur bouton switch */
-#switchCamBtn { background-color: #6c5ce7; } 
+#switchCamBtn { background-color: #6c5ce7; }
+/* Couleur spéciale pour le bouton mode */
+#toggleModeBtn { background-color: #e17055; }
 
 .separator { color: #888; margin: 0 2px; opacity: 0.5; }
 
 input[type="color"] {
-    border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    overflow: hidden;
-    cursor: pointer;
-    background: none;
+    border: none; width: 40px; height: 40px; border-radius: 50%;
+    overflow: hidden; cursor: pointer; background: none;
 }
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 input[type="color"]::-webkit-color-swatch { border: none; }
