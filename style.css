@@ -7,7 +7,6 @@ body {
     background-color: #222;
     font-family: sans-serif;
     height: 100vh;
-    /* S'assure que le contenu ne dépasse pas sur mobile */
     max-height: -webkit-fill-available; 
     overflow: hidden;
 }
@@ -16,7 +15,6 @@ body {
     position: relative;
     width: 100%;
     max-width: 800px;
-    /* Flex pour centrer verticalement si l'écran est grand */
     flex-grow: 1;
     display: flex;
     justify-content: center;
@@ -24,15 +22,20 @@ body {
     background: #000;
     -webkit-user-select: none; 
     user-select: none;
-    overflow: hidden; /* Important pour que la vidéo ne déborde pas */
+    overflow: hidden;
 }
 
 #videoElement {
-    /* La vidéo prend toute la place disponible en gardant le ratio */
     width: 100%;
     height: 100%;
-    object-fit: cover; 
-    transform: scaleX(-1); /* Effet miroir CSS */
+    object-fit: cover;
+    /* Plus de transform ici par défaut */
+    transition: transform 0.5s ease; /* Petit effet sympa lors du switch */
+}
+
+/* NOUVEAU : Classe pour l'effet miroir (Selfie uniquement) */
+#videoElement.mirrored {
+    transform: scaleX(-1);
 }
 
 #drawingCanvas {
@@ -46,7 +49,7 @@ body {
 }
 
 .controls {
-    flex-shrink: 0; /* La barre ne doit pas rétrécir */
+    flex-shrink: 0;
     margin: 10px 0;
     display: flex;
     flex-wrap: wrap;
@@ -55,68 +58,47 @@ body {
     gap: 8px;
     background: rgba(255, 255, 255, 0.15);
     padding: 10px 15px;
-    border-radius: 30px; /* Style plus moderne */
+    border-radius: 30px;
     backdrop-filter: blur(5px);
+    z-index: 10; /* S'assure que les contrôles sont au-dessus */
 }
 
 button {
     padding: 10px;
-    font-size: 18px; /* Plus gros pour les emojis */
+    font-size: 18px;
     cursor: pointer;
     border: none;
-    border-radius: 50%; /* Boutons ronds */
+    border-radius: 50%;
     width: 45px;
     height: 45px;
     background-color: #444;
     color: white;
-    transition: all 0.2s;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-/* Bouton actif (Crayon/Gomme) */
 button.tool-btn.active {
     background-color: #00cec9;
     color: #000;
-    box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
 }
 
-/* Bouton Effacer (Rouge) */
-#clearBtn {
-    background-color: #ff4757;
-}
-#clearBtn:hover { background-color: #ff6b81; }
+#clearBtn { background-color: #ff4757; }
+#saveBtn { background-color: #0984e3; }
+/* Couleur bouton switch */
+#switchCamBtn { background-color: #6c5ce7; } 
 
-/* NOUVEAU : Bouton Photo (Bleu) */
-#saveBtn {
-    background-color: #0984e3;
-}
-#saveBtn:hover { background-color: #74b9ff; }
-
-
-.separator {
-    color: #888;
-    font-size: 20px;
-    margin: 0 2px;
-    opacity: 0.5;
-}
+.separator { color: #888; margin: 0 2px; opacity: 0.5; }
 
 input[type="color"] {
     border: none;
     width: 40px;
     height: 40px;
-    padding: 0;
     border-radius: 50%;
     overflow: hidden;
     cursor: pointer;
     background: none;
 }
-/* Hack pour enlever la bordure moche sur Chrome */
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 input[type="color"]::-webkit-color-swatch { border: none; }
-
-input[type="range"] {
-    cursor: pointer;
-    width: 80px;
-}
+input[type="range"] { width: 80px; cursor: pointer; }

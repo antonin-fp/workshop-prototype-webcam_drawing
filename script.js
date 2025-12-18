@@ -8,42 +8,70 @@ const penBtn = document.getElementById('penBtn');
 const eraserBtn = document.getElementById('eraserBtn');
 const colorPicker = document.getElementById('colorPicker');
 const lineWidthRange = document.getElementById('lineWidth');
-// NOUVEAU : Référence au bouton sauvegarder
 const saveBtn = document.getElementById('saveBtn');
+const switchCamBtn = document.getElementById('switchCamBtn'); // NOUVEAU
 
 let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
-let currentMode = 'pen'; // 'pen' ou 'eraser'
+let currentMode = 'pen'; 
+
+// NOUVEAU : Variable pour suivre quelle caméra est utilisée
+// 'user' = frontale (selfie), 'environment' = arrière
+let facingMode = 'user'; 
+let currentStream = null;
 
 // --- 1. Gestion de la Caméra ---
+
 async function startCamera() {
+    // Si un flux existe déjà, on l'arrête avant d'en lancer un nouveau
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+    }
+
     try {
-        // On demande une haute résolution si possible pour une meilleure photo
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { 
-                facingMode: 'user', // 'user' pour caméra frontale (selfie), 'environment' pour arrière
+                facingMode: facingMode, // On utilise la variable dynamique
                 width: { ideal: 1920 },
                 height: { ideal: 1080 }
             } 
         });
+        
+        currentStream = stream;
         video.srcObject = stream;
-        // Important : on attend que la vidéo joue pour dimensionner le canvas
+        
+        // GESTION DU MIROIR CSS
+        // Si c'est la caméra selfie ('user'), on ajoute la classe miroir.
+        // Si c'est la caméra arrière ('environment'), on l'enlève.
+        if (facingMode === 'user') {
+            video.classList.add('mirrored');
+        } else {
+            video.classList.remove('mirrored');
+        }
+
         video.onloadedmetadata = () => {
             video.play();
         };
     } catch (err) {
         console.error("Erreur:", err);
-        alert("Erreur d'accès caméra (Vérifiez HTTPS et permissions).");
+        alert("Impossible d'accéder à la caméra ou de changer de vue.");
     }
 }
 
-// On redimensionne le canvas quand la taille de la vidéo est connue
+// NOUVEAU : Fonction pour basculer la caméra
+switchCamBtn.addEventListener('click', () => {
+    // Inverse le mode
+    facingMode = (facingMode === 'user') ? 'environment' : 'user';
+    // Relance la caméra
+    startCamera();
+});
+
+// Redimensionnement du canvas
 video.addEventListener('canplay', () => {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 });
-
 
 // --- 2. Gestion des Outils ---
 function setTool(mode) {
@@ -63,7 +91,6 @@ eraserBtn.addEventListener('click', () => setTool('eraser'));
 // --- 3. Fonctions de Dessin ---
 function getPos(e) {
     const rect = canvas.getBoundingClientRect();
-    // Calcul précis du ratio entre la taille affichée et la résolution réelle
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
 
@@ -87,12 +114,10 @@ function startDrawing(e) {
     const pos = getPos(e);
     lastX = pos.x;
     lastY = pos.y;
-    // e.preventDefault() est déplacé dans les écouteurs pour ne pas bloquer les clics boutons
 }
 
 function draw(e) {
     if (!isDrawing) return;
-     // Empêche le scroll uniquement quand on dessine
     if (e.cancelable) e.preventDefault();
 
     const pos = getPos(e);
@@ -122,19 +147,14 @@ function stopDrawing() {
     ctx.globalCompositeOperation = 'source-over';
 }
 
-// --- 4. Écouteurs Dessin ---
-// Utilisation de 'pointerdown' qui gère mieux souris ET tactile unifiés
+// Events
 canvas.addEventListener('pointerdown', (e) => {
-    // On ne dessine que si c'est le clic gauche ou le doigt (pointerType 'touch')
     if (e.button === 0 || e.pointerType === 'touch') {
-        // Capture le pointeur pour que le dessin continue même si on sort du canvas
         canvas.setPointerCapture(e.pointerId);
         startDrawing(e);
     }
 });
-
 canvas.addEventListener('pointermove', draw);
-
 canvas.addEventListener('pointerup', (e) => {
      canvas.releasePointerCapture(e.pointerId);
      stopDrawing();
@@ -145,52 +165,42 @@ clearBtn.addEventListener('click', () => {
 });
 
 
-// --- 5. NOUVEAU : Fonction de Sauvegarde Photo ---
-
+// --- 4. Sauvegarde Photo (MISE À JOUR IMPORTANTE) ---
 saveBtn.addEventListener('click', () => {
-    // a. Créer un canvas temporaire en mémoire
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
-
-    // b. Lui donner la même taille que la vidéo
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
 
-    // c. GÉRER L'EFFET MIROIR :
-    // Le CSS inverse la vidéo visuellement, mais pas les données brutes.
-    // Il faut donc inverser le contexte temporaire avant de dessiner la vidéo.
-    tempCtx.translate(tempCanvas.width, 0);
-    tempCtx.scale(-1, 1);
+    // Logique de miroir conditionnelle pour la sauvegarde
+    if (facingMode === 'user') {
+        // Si c'est un selfie, on inverse l'image pour qu'elle corresponde à l'écran
+        tempCtx.translate(tempCanvas.width, 0);
+        tempCtx.scale(-1, 1);
+    } 
+    // Si c'est la caméra arrière ('environment'), on ne fait RIEN (pas de scale -1)
+    // pour que le texte reste lisible.
 
-    // d. Dessiner l'image actuelle de la vidéo sur le canvas temporaire
     tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-
-    // e. Annuler l'inversion pour que le dessin, lui, soit dans le bon sens
+    
+    // Reset transform pour dessiner le canvas de dessin par dessus
     tempCtx.setTransform(1, 0, 0, 1, 0, 0);
-
-    // f. Dessiner le contenu du canvas de dessin par dessus la vidéo
     tempCtx.drawImage(canvas, 0, 0);
 
-    // g. Convertir le résultat en image PNG et télécharger
     try {
-        // Générer un nom de fichier avec la date
         const date = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
-        const fileName = `dessin-camera-${date}.png`;
+        const fileName = `dessin-${facingMode}-${date}.png`; // Ajout du mode dans le nom
 
-        // Créer un lien invisible pour déclencher le téléchargement
         const link = document.createElement('a');
         link.download = fileName;
-        // Transforme le canvas temporaire en URL de données image
-        link.href = tempCanvas.toDataURL('image/png', 1.0); // 1.0 = qualité max
+        link.href = tempCanvas.toDataURL('image/png');
         document.body.appendChild(link);
-        link.click(); // Simule le clic
-        document.body.removeChild(link); // Nettoyage
-
+        link.click();
+        document.body.removeChild(link);
     } catch (err) {
-        console.error("Erreur lors de la sauvegarde:", err);
-        alert("Impossible de sauvegarder l'image (problème de sécurité navigateur).");
+        console.error("Erreur sauvegarde:", err);
     }
 });
 
-// Lancement
+// Lancement initial
 startCamera();

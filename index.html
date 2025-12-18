@@ -3,24 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dessin sur Caméra</title>
+    <title>Dessin Caméra + Switch</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="controls">
-        <button id="penBtn" class="tool-btn active" title="Outil Crayon">✏️</button>
-        <button id="eraserBtn" class="tool-btn" title="Outil Gomme">🧽</button>
+        <button id="switchCamBtn" title="Changer de caméra">🔄</button>
         
         <span class="separator">|</span>
 
-        <input type="color" id="colorPicker" value="#00FF00" title="Couleur">
-        <input type="range" id="lineWidth" min="1" max="50" value="5" title="Épaisseur">
+        <button id="penBtn" class="tool-btn active" title="Crayon">✏️</button>
+        <button id="eraserBtn" class="tool-btn" title="Gomme">🧽</button>
+        
+        <span class="separator">|</span>
+
+        <input type="color" id="colorPicker" value="#00FF00">
+        <input type="range" id="lineWidth" min="1" max="50" value="5">
         
         <span class="separator">|</span>
         
         <button id="clearBtn" title="Tout effacer">🗑️</button>
-        <button id="saveBtn" title="Prendre une photo">📷</button>
+        <button id="saveBtn" title="Photo">📷</button>
     </div>
 
     <div id="camera-container">
