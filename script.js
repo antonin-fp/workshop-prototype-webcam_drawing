@@ -9,22 +9,21 @@ const eraserBtn = document.getElementById('eraserBtn');
 const colorPicker = document.getElementById('colorPicker');
 const lineWidthRange = document.getElementById('lineWidth');
 const saveBtn = document.getElementById('saveBtn');
-const switchCamBtn = document.getElementById('switchCamBtn'); // NOUVEAU
+const switchCamBtn = document.getElementById('switchCamBtn');
 
 let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
 let currentMode = 'pen'; 
 
-// NOUVEAU : Variable pour suivre quelle caméra est utilisée
-// 'user' = frontale (selfie), 'environment' = arrière
-let facingMode = 'user'; 
+// --- CHANGEMENT ICI ---
+// On initialise sur 'environment' (arrière) au lieu de 'user' (avant)
+let facingMode = 'environment'; 
 let currentStream = null;
 
 // --- 1. Gestion de la Caméra ---
 
 async function startCamera() {
-    // Si un flux existe déjà, on l'arrête avant d'en lancer un nouveau
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
     }
@@ -32,7 +31,7 @@ async function startCamera() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { 
-                facingMode: facingMode, // On utilise la variable dynamique
+                facingMode: facingMode, 
                 width: { ideal: 1920 },
                 height: { ideal: 1080 }
             } 
@@ -41,9 +40,9 @@ async function startCamera() {
         currentStream = stream;
         video.srcObject = stream;
         
-        // GESTION DU MIROIR CSS
-        // Si c'est la caméra selfie ('user'), on ajoute la classe miroir.
-        // Si c'est la caméra arrière ('environment'), on l'enlève.
+        // Gestion du Miroir :
+        // Si on commence sur 'environment', la classe .mirrored ne sera PAS ajoutée.
+        // C'est parfait car on ne veut pas d'effet miroir sur la caméra arrière.
         if (facingMode === 'user') {
             video.classList.add('mirrored');
         } else {
@@ -55,15 +54,13 @@ async function startCamera() {
         };
     } catch (err) {
         console.error("Erreur:", err);
-        alert("Impossible d'accéder à la caméra ou de changer de vue.");
+        alert("Impossible d'accéder à la caméra. Vérifiez HTTPS.");
     }
 }
 
-// NOUVEAU : Fonction pour basculer la caméra
 switchCamBtn.addEventListener('click', () => {
-    // Inverse le mode
+    // Bascule entre les deux modes
     facingMode = (facingMode === 'user') ? 'environment' : 'user';
-    // Relance la caméra
     startCamera();
 });
 
@@ -165,31 +162,26 @@ clearBtn.addEventListener('click', () => {
 });
 
 
-// --- 4. Sauvegarde Photo (MISE À JOUR IMPORTANTE) ---
+// --- 4. Sauvegarde Photo ---
 saveBtn.addEventListener('click', () => {
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
 
-    // Logique de miroir conditionnelle pour la sauvegarde
     if (facingMode === 'user') {
-        // Si c'est un selfie, on inverse l'image pour qu'elle corresponde à l'écran
         tempCtx.translate(tempCanvas.width, 0);
         tempCtx.scale(-1, 1);
     } 
-    // Si c'est la caméra arrière ('environment'), on ne fait RIEN (pas de scale -1)
-    // pour que le texte reste lisible.
 
     tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
     
-    // Reset transform pour dessiner le canvas de dessin par dessus
     tempCtx.setTransform(1, 0, 0, 1, 0, 0);
     tempCtx.drawImage(canvas, 0, 0);
 
     try {
         const date = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
-        const fileName = `dessin-${facingMode}-${date}.png`; // Ajout du mode dans le nom
+        const fileName = `dessin-${facingMode}-${date}.png`;
 
         const link = document.createElement('a');
         link.download = fileName;
