@@ -7,7 +7,7 @@ const photoCtx = photoCanvas.getContext('2d');
 const mainContainer = document.getElementById('main-container');
 const cameraWrapper = document.getElementById('camera-wrapper');
 
-// Containers UI
+// UI
 const uiWrapper = document.getElementById('ui-wrapper');
 const toolbar = document.getElementById('toolbar');
 const toggleIcon = document.getElementById('toggleIcon');
@@ -46,24 +46,38 @@ let isToolbarCollapsed = false;
 // Init
 ctx.strokeStyle = colorPicker.value;
 colorIcon.style.color = colorPicker.value;
+updatePanelPosition(); 
 settingsPanel.classList.remove('hidden-panel');
 
-// --- UI ---
 
-// Switch Side
+// --- UI LOGIC ---
+
+function updatePanelPosition() {
+    if (uiWrapper.classList.contains('right')) {
+        settingsPanel.classList.add('anchor-right');
+        settingsPanel.classList.remove('anchor-left');
+        eraserPanel.classList.add('anchor-right');
+        eraserPanel.classList.remove('anchor-left');
+    } else {
+        settingsPanel.classList.add('anchor-left');
+        settingsPanel.classList.remove('anchor-right');
+        eraserPanel.classList.add('anchor-left');
+        eraserPanel.classList.remove('anchor-right');
+    }
+}
+
 sideSwitchBtn.addEventListener('click', () => {
     uiWrapper.classList.toggle('right');
     uiWrapper.classList.toggle('left');
+    updatePanelPosition();
 });
 
-// Réduire
 toggleMenuBtn.addEventListener('click', () => {
     isToolbarCollapsed = !isToolbarCollapsed;
     toolbar.classList.toggle('collapsed');
     toggleIcon.className = isToolbarCollapsed ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down";
 });
 
-// Pen
 penBtn.addEventListener('click', () => {
     currentMode = 'pen';
     ctx.globalCompositeOperation = 'source-over';
@@ -76,7 +90,6 @@ penBtn.addEventListener('click', () => {
     eraserPanel.classList.add('hidden-panel');
 });
 
-// Eraser
 eraserBtn.addEventListener('click', () => {
     currentMode = 'eraser';
     ctx.globalCompositeOperation = 'destination-out';
@@ -88,7 +101,6 @@ eraserBtn.addEventListener('click', () => {
     settingsPanel.classList.add('hidden-panel');
 });
 
-// Color
 colorBtn.addEventListener('click', () => colorPicker.click());
 colorPicker.addEventListener('input', (e) => {
     const col = e.target.value;
@@ -96,7 +108,6 @@ colorPicker.addEventListener('input', (e) => {
     if (currentMode === 'pen') ctx.strokeStyle = col;
 });
 
-// Sizes
 lineWidthRange.addEventListener('input', (e) => widthValue.textContent = e.target.value + 'px');
 eraserWidthRange.addEventListener('input', (e) => eraserWidthValue.textContent = e.target.value + 'px');
 
