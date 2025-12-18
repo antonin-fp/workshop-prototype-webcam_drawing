@@ -3,28 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dessin Caméra Fit</title>
+    <title>Caméra Entière (Contain)</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <div class="controls">
-        <button id="toggleModeBtn" title="Basculer Direct/Photo">❄️</button>
-        <button id="switchCamBtn" title="Changer de caméra">🔄</button>
-        <span class="separator">|</span>
-        <button id="penBtn" class="tool-btn active" title="Crayon">✏️</button>
-        <button id="eraserBtn" class="tool-btn" title="Gomme">🧽</button>
-        <input type="color" id="colorPicker" value="#00FF00">
-        <input type="range" id="lineWidth" min="1" max="50" value="5">
-        <span class="separator">|</span>
-        <button id="clearBtn" title="Tout effacer">🗑️</button>
-        <button id="saveBtn" title="Sauvegarder">💾</button>
-    </div>
 
     <div id="camera-container">
         <video id="videoElement" autoplay playsinline crossOrigin="anonymous"></video>
         <canvas id="photoCanvas" class="hidden"></canvas>
         <canvas id="drawingCanvas"></canvas>
+        
+        <div class="controls">
+            <button id="toggleModeBtn" title="Figer/Direct">❄️</button>
+            <button id="switchCamBtn" title="Changer Caméra">🔄</button>
+            <span class="separator">|</span>
+            <button id="penBtn" class="active">✏️</button>
+            <button id="eraserBtn">🧽</button>
+            <input type="color" id="colorPicker" value="#00FF00">
+            <input type="range" id="lineWidth" min="1" max="50" value="5">
+            <span class="separator">|</span>
+            <button id="clearBtn">🗑️</button>
+            <button id="saveBtn">💾</button>
+        </div>
     </div>
 
     <script src="script.js"></script>

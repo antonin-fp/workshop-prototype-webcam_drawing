@@ -3,7 +3,7 @@ const canvas = document.getElementById('drawingCanvas');
 const ctx = canvas.getContext('2d');
 const photoCanvas = document.getElementById('photoCanvas');
 const photoCtx = photoCanvas.getContext('2d');
-const cameraContainer = document.getElementById('camera-container');
+const container = document.getElementById('camera-container');
 
 // Contrôles
 const clearBtn = document.getElementById('clearBtn');
@@ -16,124 +16,106 @@ const switchCamBtn = document.getElementById('switchCamBtn');
 const toggleModeBtn = document.getElementById('toggleModeBtn');
 
 let isDrawing = false;
-let lastX = 0;
-let lastY = 0;
-let currentMode = 'pen'; 
-let facingMode = 'environment'; 
+let lastX = 0; let lastY = 0;
+let currentMode = 'pen';
+let facingMode = 'environment'; // Caméra arrière par défaut
 let currentStream = null;
 let isLiveMode = true;
 
-// --- 1. Utilitaires de Dimensionnement ---
+// --- 1. FONCTION CLÉ : Simuler object-fit: contain en JS ---
+// Cette fonction sert à dessiner la vidéo centrée avec respect du ratio (bandes noires)
+function drawImageContain(ctx, img, canvasWidth, canvasHeight) {
+    // 1. Calculer le ratio d'échelle pour faire rentrer l'image
+    const hRatio = canvasWidth / img.videoWidth;
+    const vRatio = canvasHeight / img.videoHeight;
+    const ratio = Math.min(hRatio, vRatio); // On prend le plus petit pour que ça rentre
 
-// Cette fonction s'assure que la résolution interne du canvas
-// correspond exactement à la taille affichée à l'écran
-function resizeCanvas() {
-    // On donne aux canvas la taille exacte du conteneur affiché
-    const width = cameraContainer.clientWidth;
-    const height = cameraContainer.clientHeight;
+    // 2. Calculer la position pour centrer
+    const centerShift_x = (canvasWidth - img.videoWidth * ratio) / 2;
+    const centerShift_y = (canvasHeight - img.videoHeight * ratio) / 2;
 
-    // Mise à jour de la résolution interne (sans effacer si possible)
-    if (canvas.width !== width || canvas.height !== height) {
-        // Sauvegarde du dessin actuel si besoin (optionnel, ici on reset au resize pour simplifier)
-        canvas.width = width;
-        canvas.height = height;
-        photoCanvas.width = width;
-        photoCanvas.height = height;
-    }
+    // 3. Dessiner (sans aucun effet miroir)
+    ctx.drawImage(
+        img, 
+        0, 0, img.videoWidth, img.videoHeight, // Source
+        centerShift_x, centerShift_y, img.videoWidth * ratio, img.videoHeight * ratio // Destination
+    );
 }
 
-// On écoute le redimensionnement de la fenêtre (rotation téléphone)
+
+// --- 2. Redimensionnement ---
+function resizeCanvas() {
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    // Si pas de changement, on sort
+    if (canvas.width === width && canvas.height === height) return;
+
+    // Sauvegarde temporaire du dessin
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width; 
+    tempCanvas.height = canvas.height;
+    // On vérifie que le canvas a une taille > 0 avant de dessiner
+    if (canvas.width > 0 && canvas.height > 0) {
+        tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+    }
+
+    // Mise à jour de la taille réelle en mémoire
+    canvas.width = width; canvas.height = height;
+    photoCanvas.width = width; photoCanvas.height = height;
+
+    // Restauration du dessin
+    ctx.drawImage(tempCanvas, 0, 0, width, height);
+}
+// On écoute le redimensionnement (rotation écran)
 window.addEventListener('resize', resizeCanvas);
 
 
-// --- 2. Gestion Caméra ---
-
+// --- 3. Caméra ---
 async function startCamera() {
-    if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-    }
-
+    if (currentStream) currentStream.getTracks().forEach(t => t.stop());
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { 
                 facingMode: facingMode, 
-                // On demande une résolution standard, le CSS gérera l'affichage
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+                width: { ideal: 1920 }, height: { ideal: 1080 } 
             } 
         });
-        
         currentStream = stream;
         video.srcObject = stream;
         
-        if (facingMode === 'user') {
-            video.classList.add('mirrored');
-        } else {
-            video.classList.remove('mirrored');
-        }
+        // Note: On a SUPPRIMÉ toute logique de classe .mirrored ici.
+        // La vidéo s'affiche brute, telle quelle.
 
-        video.onloadedmetadata = () => {
-            video.play();
-            resizeCanvas(); // Ajuste la taille une fois la vidéo prête
+        video.onloadedmetadata = () => { 
+            video.play(); 
+            resizeCanvas(); 
         };
-    } catch (err) {
-        console.error("Erreur:", err);
-        alert("Erreur accès caméra.");
-    }
+    } catch (err) { console.error(err); }
 }
 
 switchCamBtn.addEventListener('click', () => {
     facingMode = (facingMode === 'user') ? 'environment' : 'user';
-    if (!isLiveMode) toggleMode();
+    if (!isLiveMode) toggleMode(); // Retour au direct si on change de cam
     startCamera();
 });
 
-// --- 3. Mode Direct / Photo ---
 
+// --- 4. Mode Direct / Photo ---
 function toggleMode() {
     isLiveMode = !isLiveMode;
+    resizeCanvas(); // Sécurité taille
 
     if (isLiveMode) {
         video.classList.remove('hidden');
         photoCanvas.classList.add('hidden');
         toggleModeBtn.textContent = '❄️';
     } else {
-        // IMPORTANT : Pour dessiner la vidéo sur le canvas en mode "contain",
-        // il faut calculer le ratio pour ne pas déformer l'image (garder aspect ratio)
+        // Mode Figer : On dessine la vidéo sur le canvas photo avec la méthode "Contain"
+        photoCtx.fillStyle = "#000"; // Fond noir
+        photoCtx.fillRect(0, 0, photoCanvas.width, photoCanvas.height);
         
-        photoCtx.clearRect(0, 0, photoCanvas.width, photoCanvas.height);
-        
-        // Calcul des dimensions de l'image vidéo pour la centrer (simuler object-fit: contain)
-        const vRatio = video.videoWidth / video.videoHeight;
-        const cRatio = photoCanvas.width / photoCanvas.height;
-        let drawW, drawH, startX, startY;
-
-        if (vRatio > cRatio) {
-            // La vidéo est plus large que le canvas (bandes noires haut/bas)
-            drawW = photoCanvas.width;
-            drawH = drawW / vRatio;
-            startX = 0;
-            startY = (photoCanvas.height - drawH) / 2;
-        } else {
-            // La vidéo est plus haute (bandes noires gauche/droite)
-            drawH = photoCanvas.height;
-            drawW = drawH * vRatio;
-            startY = 0;
-            startX = (photoCanvas.width - drawW) / 2;
-        }
-
-        if (facingMode === 'user') {
-            photoCtx.translate(photoCanvas.width, 0);
-            photoCtx.scale(-1, 1);
-            // Inversion des coordonnées X si miroir
-             startX = (photoCanvas.width - drawW) / 2; // Reste centré
-             // Petit hack car le scale inversé impacte le dessin, on dessine "à l'envers"
-             // mais drawImage gère bien si on a translate avant.
-        }
-
-        photoCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, startX, startY, drawW, drawH);
-        
-        photoCtx.setTransform(1, 0, 0, 1, 0, 0);
+        drawImageContain(photoCtx, video, photoCanvas.width, photoCanvas.height);
 
         video.classList.add('hidden');
         photoCanvas.classList.remove('hidden');
@@ -143,38 +125,20 @@ function toggleMode() {
 toggleModeBtn.addEventListener('click', toggleMode);
 
 
-// --- 4. Outils ---
+// --- 5. Outils & Dessin (Standard) ---
 function setTool(mode) {
     currentMode = mode;
-    if (mode === 'pen') {
-        penBtn.classList.add('active'); eraserBtn.classList.remove('active');
-    } else {
-        eraserBtn.classList.add('active'); penBtn.classList.remove('active');
-    }
+    if (mode === 'pen') { penBtn.classList.add('active'); eraserBtn.classList.remove('active'); }
+    else { eraserBtn.classList.add('active'); penBtn.classList.remove('active'); }
 }
 penBtn.addEventListener('click', () => setTool('pen'));
 eraserBtn.addEventListener('click', () => setTool('eraser'));
 
-
-// --- 5. Dessin ---
 function getPos(e) {
-    // Comme le canvas fait exactement la taille de l'élément visuel
-    // grâce à resizeCanvas(), le calcul est simplifié :
     const rect = canvas.getBoundingClientRect();
-    
-    let clientX, clientY;
-    if (e.changedTouches && e.changedTouches.length > 0) {
-        clientX = e.changedTouches[0].clientX;
-        clientY = e.changedTouches[0].clientY;
-    } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-    }
-
-    return {
-        x: clientX - rect.left,
-        y: clientY - rect.top
-    };
+    let cx = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    let cy = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    return { x: cx - rect.left, y: cy - rect.top };
 }
 
 function startDrawing(e) {
@@ -185,25 +149,20 @@ function startDrawing(e) {
 function draw(e) {
     if (!isDrawing) return;
     if (e.cancelable) e.preventDefault();
-    
     const pos = getPos(e);
+    
     ctx.lineWidth = lineWidthRange.value;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-    if (currentMode === 'eraser') {
-        ctx.globalCompositeOperation = 'destination-out';
-    } else {
+    if (currentMode === 'eraser') ctx.globalCompositeOperation = 'destination-out';
+    else {
         ctx.globalCompositeOperation = 'source-over';
         ctx.strokeStyle = colorPicker.value;
     }
-
     ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
     lastX = pos.x; lastY = pos.y;
 }
-
-function stopDrawing() {
-    isDrawing = false; ctx.globalCompositeOperation = 'source-over';
-}
+function stopDrawing() { isDrawing = false; ctx.globalCompositeOperation = 'source-over'; }
 
 canvas.addEventListener('pointerdown', (e) => {
     if (e.button === 0 || e.pointerType === 'touch') {
@@ -219,66 +178,34 @@ clearBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canva
 
 // --- 6. Sauvegarde ---
 saveBtn.addEventListener('click', () => {
-    // On crée un canvas temporaire de la taille de l'écran (WYSWYG)
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     
-    // On utilise la taille actuelle affichée
+    // On sauvegarde EXACTEMENT ce qui est à l'écran
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
 
-    // Fond noir (si bandes noires)
-    tempCtx.fillStyle = "#000000";
+    // 1. Fond Noir
+    tempCtx.fillStyle = "#000";
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
+    // 2. Dessiner la vidéo/photo (méthode Contain)
     if (isLiveMode) {
-        // En mode Live, on doit redessiner la vidéo manuellement pour simuler le "contain"
-        // exactement comme on a fait dans toggleMode()
-        const vRatio = video.videoWidth / video.videoHeight;
-        const cRatio = tempCanvas.width / tempCanvas.height;
-        let drawW, drawH, startX, startY;
-
-        if (vRatio > cRatio) {
-            drawW = tempCanvas.width;
-            drawH = drawW / vRatio;
-            startX = 0;
-            startY = (tempCanvas.height - drawH) / 2;
-        } else {
-            drawH = tempCanvas.height;
-            drawW = drawH * vRatio;
-            startY = 0;
-            startX = (tempCanvas.width - drawW) / 2;
-        }
-
-        if (facingMode === 'user') {
-            tempCtx.translate(tempCanvas.width, 0);
-            tempCtx.scale(-1, 1);
-            // Corriger le X si scale inversé
-            // La logique de dessin miroir peut être complexe, 
-            // le plus simple est de garder le drawImage tel quel avec le contexte inversé
-        }
-        
-        tempCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, startX, startY, drawW, drawH);
-        tempCtx.setTransform(1, 0, 0, 1, 0, 0);
-
+        drawImageContain(tempCtx, video, tempCanvas.width, tempCanvas.height);
     } else {
-        // En mode photo, le photoCanvas a déjà l'image correcte
+        // En mode photo, c'est déjà dessiné correctement sur photoCanvas
         tempCtx.drawImage(photoCanvas, 0, 0);
     }
 
-    // Dessin
+    // 3. Dessiner les traits
     tempCtx.drawImage(canvas, 0, 0);
 
-    try {
-        const date = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
-        const fileName = `dessin-${date}.png`;
-        const link = document.createElement('a');
-        link.download = fileName;
-        link.href = tempCanvas.toDataURL('image/png');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    } catch (err) { console.error(err); }
+    const link = document.createElement('a');
+    link.download = `dessin-contain-${Date.now()}.png`;
+    link.href = tempCanvas.toDataURL('image/png');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 });
 
 startCamera();

@@ -4,29 +4,25 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: #222;
+    background-color: #000; /* Fond noir pour les bandes */
     font-family: sans-serif;
-    /* Force le body à prendre exactement la hauteur visible sans scroll */
     height: 100vh;
-    height: 100dvh; /* Support amélioré pour mobile (barre d'adresse) */
-    overflow: hidden; 
+    height: 100dvh; /* Pour mobile */
+    overflow: hidden;
 }
 
 #camera-container {
     position: relative;
     width: 100%;
-    /* Prend toute la hauteur restante moins les contrôles */
-    flex-grow: 1; 
-    /* Max width pour ne pas être ridicule sur PC */
-    max-width: 100%; 
+    flex-grow: 1; /* Prend tout l'espace disponible */
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #000; /* Fond noir pour les bandes */
+    background: #000;
     overflow: hidden;
 }
 
-/* Les 3 couches */
+/* Les couches superposées */
 #videoElement, #photoCanvas, #drawingCanvas {
     position: absolute;
     top: 0;
@@ -35,79 +31,62 @@ body {
     height: 100%;
 }
 
-/* Couche 1 : Vidéo */
+/* --- RÈGLE D'OR : CONTAIN --- */
+/* Cela force la vidéo/photo à rentrer EN ENTIER sans être coupée */
 #videoElement {
-    /* CORRECTION ICI : 'contain' affiche toute la vidéo sans couper les bords */
     object-fit: contain; 
-    transition: transform 0.5s ease;
     z-index: 1;
 }
-#videoElement.mirrored { transform: scaleX(-1); }
 
-/* Couche 2 : Photo */
 #photoCanvas {
     object-fit: contain;
     z-index: 2;
     pointer-events: none;
 }
 
-/* Couche 3 : Dessin */
 #drawingCanvas {
-    /* Le canvas doit aussi se comporter comme s'il était contenu */
-    object-fit: contain; 
+    z-index: 3;
     cursor: crosshair;
     touch-action: none;
-    z-index: 3;
+    /* Le canvas de dessin couvre tout l'écran pour que tu puisses 
+       aussi annoter dans les bandes noires si tu veux */
+    display: block; 
 }
 
 .hidden { display: none !important; }
 
-/* --- Contrôles (Style compacté pour petit écran) --- */
+/* --- Contrôles (Style Overlay en bas) --- */
 .controls {
-    flex-shrink: 0;
-    margin: 10px 0;
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    align-items: center;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.15);
-    padding: 8px 15px;
-    border-radius: 30px;
+    gap: 12px;
+    background: rgba(20, 20, 20, 0.8);
+    padding: 10px 20px;
+    border-radius: 40px;
+    border: 1px solid rgba(255,255,255,0.1);
     backdrop-filter: blur(5px);
-    z-index: 10;
-    max-width: 95%; /* Évite que la barre touche les bords */
+    z-index: 100;
+    width: 90%;
+    max-width: 600px;
 }
 
 button {
-    padding: 0;
-    font-size: 20px;
-    cursor: pointer;
-    border: none;
-    border-radius: 50%;
-    width: 42px;
-    height: 42px;
-    background-color: #444;
-    color: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    width: 42px; height: 42px;
+    border-radius: 50%; border: 1px solid rgba(255,255,255,0.2);
+    font-size: 18px; cursor: pointer;
+    background: rgba(255,255,255,0.1); color: white;
+    display: flex; justify-content: center; align-items: center;
 }
+button.active { background: #00cec9; color: #000; border-color: #00cec9; }
+#clearBtn { background: rgba(255, 71, 87, 0.8); }
+#saveBtn { background: rgba(9, 132, 227, 0.8); }
+#toggleModeBtn { background: rgba(225, 112, 85, 0.8); }
 
-button.tool-btn.active { background-color: #00cec9; color: #000; transform: scale(1.1); }
-#clearBtn { background-color: #ff4757; }
-#saveBtn { background-color: #0984e3; }
-#switchCamBtn { background-color: #6c5ce7; }
-#toggleModeBtn { background-color: #e17055; }
-
-.separator { color: #aaa; margin: 0 2px; opacity: 0.5; font-size: 14px;}
-
-input[type="color"] {
-    border: 2px solid rgba(255,255,255,0.2);
-    width: 38px; height: 38px; border-radius: 50%;
-    overflow: hidden; cursor: pointer; background: none;
-}
-input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-input[type="color"]::-webkit-color-swatch { border: none; }
-input[type="range"] { width: 70px; cursor: pointer; }
+.separator { color: rgba(255,255,255,0.3); font-size: 20px; margin: 0 2px; }
+input[type="range"] { width: 60px; }
+input[type="color"] { width: 35px; height: 35px; border: none; background: none; border-radius: 50%;}
